@@ -1,0 +1,233 @@
+#!/bin/sh
+
+# Author: ernierasta <ernierasta@zori.cz>
+# Title: simple LXC wrapper
+# Description: I use LXC not so often to remember all tricks. This primitive script help me to stay sane. ;-)
+
+
+# VARS
+
+# path where config and fs is located
+# TODO: looks like this standard, but maybe we should retrieve it dynamicaly
+# TODO: what about unprivileged?
+IMAGE_PATH=/var/lib/lxc
+
+
+usage() {
+	echo \
+"
+	lxw [ACTION] [CONTAINER_NAME] [OPTIONS] 
+
+ACTIONS
+
+new <name>			Create new container with <name>.
+net <name> [bridge] [gateway]	Define bridged network for container. 
+				DEFAULTS:
+					bridge - autodetect first active bridge.
+					gateway - autodetect \"default\" gw.
+restart <name>			Run or restart container.
+frestart <name> 		Fast restart, force kill container.
+attach <name>			Run if stopped and attach console to container.
+stop <name> 			Stop container.
+kill <name> 			Kill container.
+info <name> 			Show container info, name, ip, ...
+
+
+Example workflow:
+  lxw new mydebian
+  lxw net mydebian
+  lxw attach mydebian
+
+
+NOTES:
+  - bridge is detected as: ip link list type bridge | grep "state UP" | head -n1 | cut -d' ' -f2
+  - gateway is detected as: ip route list 0/0 | cut -f3 -d' '
+BRIDGE:
+- to use bridge set your interfaces to something like (generally move your ip setting from eth0 to br0):
+  auto eth0
+  iface eth0 inet static
+    address 0.0.0.0
+
+  auto br0
+  iface br0 inet dhcp
+    bridge_ports eth0
+
+"
+}
+
+
+_is_running() {
+	local name="$1"
+
+	lxc-info -s $name | grep RUNNING > /dev/null 2>&1
+}
+
+setup() {
+	echo "Unimplemented, TODO."
+}
+
+new() {
+	local name="$1"
+
+	lxc-create -t download $name
+	lxc-start $name
+
+}
+
+ls() {
+	local OPTS="$@"
+	local param="-f"
+
+        for a in $OPTS; do
+                case "$a" in
+		ls) ;;
+                -a | --all ) param="-1" ;;
+                -r | --running) param="--running -1";;
+                *) ;;
+                esac
+        done
+	
+	lxc-ls $param
+
+}
+
+restart() {
+	name="$1"
+	fast=$2
+
+	# stop container if already running
+	if _is_running $name; then
+		echo "Restarting container \"$name\"\n"
+		if [ -z $fast ]; then
+			stop $name
+		else
+			fkill $name
+		fi
+	else
+		echo "Staring container \"$name\"\n"
+	fi
+
+	# try to upgrade config if there is problem staring
+	if ! lxc-start $name; then
+		# try to update config, maybe it will help starting container
+		lxc-update-config -c $IMAGE_PATH/$name/config && \
+			echo "Updated config in $IMAGE_PATH/$name/config"
+		lxc-start $name
+	fi
+	
+	lxc-info -s $name
+}
+
+attach() {
+	local name="$1"
+
+	if ! _is_running $name; then
+		lxc-start $name
+	fi
+
+	lxc-attach $name
+}
+
+stop() {
+	local name="$1"
+
+	lxc-stop $name
+}
+
+fkill() {
+	local name="$1"
+
+	lxc-stop -k $name
+}
+
+net() {
+	local name="$2"
+	local bridge="$3"
+	local gw="$4"
+	local br=""
+
+	echo "THIS IS VERY EXPERIMENTAL! You should use /etc/lxc/default.conf to set this!"
+
+	# we are using first active bridge, hopefully it will be it ;-)
+	if [ -z "$bridge" ]; then
+		br=$(ip link list type bridge | grep "state UP" | head -n1 | cut -d' ' -f2)
+		bridge=$(echo "${br%?}") # remove ":"
+	fi
+
+	if [ -z "$gw" ]; then
+		gw=$(ip route list 0/0 | cut -f3 -d' ')
+	fi
+	
+	#TODO: allow other types of networking
+
+	if grep "lxc.net.0.flags" $IMAGE_PATH/$name/config > /dev/null 2>&1 ; then
+		echo "Network seems to be configured for container \"$name\"."
+		echo "Detected by existance of line:"
+		echo "lxc.net.0.flags"
+	else
+		sed -i 's/lxc.net.0.type = empty/lxc.net.0.type = veth/g' $IMAGE_PATH/$name/config
+		cat <<- EOF >> $IMAGE_PATH/$name/config
+		lxc.net.0.flags = up
+	
+		# bridge 
+		lxc.net.0.link = $bridge
+	
+		# randomized MAC
+		lxc.net.0.hwaddr = 00:FF:AA:xx:xx:xx
+
+		#will use DHCP if not set
+		#lxc.net.0.ipv4.address = 192.168.1.150/24
+
+		# define a gateway to have access to the internet
+		lxc.net.0.ipv4.gateway = $gw
+		EOF
+		echo "Network configured for \"$name\"."
+		echo "Bride:  \t$bridge"
+		echo "Gateway:\t$gw"
+	fi
+
+}
+
+del() {
+	local name="$1"
+	
+	# cannot be destroyed if running
+	if _is_running $name; then
+		stop $name
+	fi
+
+	if lxc-destroy $name; then
+		echo "Deleted \"$name\"."
+	else
+		echo "ERROR: Unable to delele \"$name\"!"
+	fi
+}
+
+info() {
+	local name="$1"
+
+	lxc-info "$name"
+}
+
+# main
+# this sucks, busybox getopt is lacking -n param, so will not work there
+#OPTS=`getopt -l sync -o s -n 'parse-options' "$@"`
+
+main_command="$1"
+all_commands="$@"
+
+case "$main_command" in
+	attach) attach "$2";;
+	del) del "$2";;
+	frestart) restart "$2" true;;
+	info) info "$2";;
+	kill) fkill "$2";;
+	ls) ls "$all_commands";;
+	new) new "$2";;
+	net) net $all_commands;;
+	restart) restart "$2";;
+	setup) setup $all_commands;;
+	stop) stop "$2";;
+
+	*) usage; exit 1;;
+esac

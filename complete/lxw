@@ -1,0 +1,39 @@
+# by ErnieRasta, lxw completion
+
+_lxw_all() {
+	lxw ls -a
+}
+
+_lxw_running() {
+	lxw ls -r
+}
+
+_lxw_all_reply() {
+	COMPREPLY=( $( compgen -W '$(_lxw_all)' -- "$1") )
+}
+
+_lxw_running_reply() {
+	COMPREPLY=( $( compgen -W '$(_lxw_running)' -- "$1") )
+}
+_lxw() {
+	local actions="attach del frestart info kill ls new net restart setup stop"
+	local cur
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	
+	if [ $COMP_CWORD -eq 1 ]; then 
+		COMPREPLY=( $( compgen -W "$actions" -- $cur ) )
+	else
+		case ${COMP_WORDS[1]} in
+			attach|del|frestart|info|ls|net|restart)
+				_lxw_all_reply $cur
+			;;
+			kill|stop)
+				_lxw_running_reply $cur
+			;;
+		esac
+	fi
+}
+
+complete -F _lxw lxw
+
+# ex: filetype=sh

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# install or update lxw
+sudo cp lxw /usr/local/bin/
+sudo cp complete/lxw /usr/share/bash-completion/completions/
+
+# optionally to make sudo alias:
+# [ -f ~/.bash_aliases ] && echo -e "alias lxw='sudo lxw'\n" >> ~/.bash_aliases || echo -e "alias lxw='sudo lxw'" >> ~/.bashrc
+
+
+
