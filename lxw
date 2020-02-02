@@ -28,6 +28,8 @@ net <name> [bridge] [gateway]	Define bridged network for container.
 restart <name>			Run or restart container.
 frestart <name> 		Fast restart, force kill container.
 attach <name>			Run if stopped and attach console to container.
+start <name>                    Start container.
+fstart <name>                   Foreground start container (DEBUG).
 stop <name> 			Stop container.
 kill <name> 			Kill container.
 info <name> 			Show container info, name, ip, ...
@@ -70,9 +72,22 @@ new() {
 	local name="$1"
 
 	lxc-create -t download $name
-	lxc-start $name
+	start "$name"
 
 }
+
+start() {
+        local name="$1"
+
+	lxc-start $name
+}
+
+fstart() {
+        local name="$1"
+
+	lxc-start -F $name
+}
+
 
 ls() {
 	local OPTS="$@"
@@ -227,6 +242,8 @@ case "$main_command" in
 	net) net $all_commands;;
 	restart) restart "$2";;
 	setup) setup $all_commands;;
+        start) start "$2";;
+        fstart) fstart "$2";;
 	stop) stop "$2";;
 
 	*) usage; exit 1;;

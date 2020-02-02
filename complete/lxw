@@ -16,7 +16,7 @@ _lxw_running_reply() {
 	COMPREPLY=( $( compgen -W '$(_lxw_running)' -- "$1") )
 }
 _lxw() {
-	local actions="attach del frestart info kill ls new net restart setup stop"
+	local actions="attach del frestart fstart info kill ls new net restart setup start stop"
 	local cur
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	
@@ -24,7 +24,7 @@ _lxw() {
 		COMPREPLY=( $( compgen -W "$actions" -- $cur ) )
 	else
 		case ${COMP_WORDS[1]} in
-			attach|del|frestart|info|ls|net|restart)
+			attach|del|frestart|info|ls|net|restart|start|fstart)
 				_lxw_all_reply $cur
 			;;
 			kill|stop)
