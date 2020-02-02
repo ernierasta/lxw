@@ -162,7 +162,7 @@ net() {
 
 	if grep "lxc.net.0.flags" $IMAGE_PATH/$name/config > /dev/null 2>&1 ; then
 		echo "Network seems to be configured for container \"$name\"."
-		echo "Detected by existance of line:"
+		echo "Detected by existance of line in $IMAGE_PATH/$name/config:"
 		echo "lxc.net.0.flags"
 	else
 		sed -i 's/lxc.net.0.type = empty/lxc.net.0.type = veth/g' $IMAGE_PATH/$name/config
