@@ -224,6 +224,34 @@ info() {
 	lxc-info "$name"
 }
 
+# copied from alpinelinux /etc/init.d/lxc. You can call it with
+# mount | unmount as parameter.
+# this allows running systemd system on non-systemd distro
+systemd_ctr() {
+	local cmd="$1"
+	# Required for lxc-console and services inside systemd containers.
+	local cgroup=/sys/fs/cgroup/systemd
+	local mnt_opts='rw,nosuid,nodev,noexec,relatime,none,name=systemd'
+
+	case "$cmd" in
+		mount)
+			checkpath -d $cgroup
+			if ! mount | grep $cgroup >/dev/null; then
+				mount -t cgroup -o $mnt_opts cgroup $cgroup
+			fi
+			;;
+		unmount)
+			if mount | grep $cgroup >/dev/null; then
+				umount $cgroup
+			fi
+			;;
+	esac
+}
+
+# we will mount it and never unmout, I am ok with that, are you?
+# if not, let me know and open issue.
+systemd_ctr mount
+
 # main
 # this sucks, busybox getopt is lacking -n param, so will not work there
 #OPTS=`getopt -l sync -o s -n 'parse-options' "$@"`
