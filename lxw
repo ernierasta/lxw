@@ -78,6 +78,11 @@ new() {
 
 start() {
         local name="$1"
+        
+        # we will mount it and never unmout, I am ok with that, are you?
+        # if not, let me know and open issue.
+        systemd_ctr mount
+
 
 	lxc-start $name
 }
@@ -235,7 +240,7 @@ systemd_ctr() {
 
 	case "$cmd" in
 		mount)
-			checkpath -d $cgroup
+			mkdir -p $cgroup
 			if ! mount | grep $cgroup >/dev/null; then
 				mount -t cgroup -o $mnt_opts cgroup $cgroup
 			fi
@@ -248,9 +253,6 @@ systemd_ctr() {
 	esac
 }
 
-# we will mount it and never unmout, I am ok with that, are you?
-# if not, let me know and open issue.
-systemd_ctr mount
 
 # main
 # this sucks, busybox getopt is lacking -n param, so will not work there
