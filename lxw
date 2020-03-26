@@ -20,8 +20,10 @@ usage() {
 
 ACTIONS
 
-new <name>			Create new container with <name>.
-net <name> [bridge] [gateway]	Define bridged network for container. 
+new <name> [distro] [release] [arch]    Create new container with <name>.
+                                If [distro] and [release] are ommited, you will be asked.
+                                If [arch] is ommited host arch is used.
+net <name> [bridge] [gateway]	        Define bridged network for container. 
 				DEFAULTS:
 					bridge - autodetect first active bridge.
 					gateway - autodetect \"default\" gw.
@@ -36,7 +38,7 @@ info <name> 			Show container info, name, ip, ...
 
 
 Example workflow:
-  lxw new mydebian
+  lxw new mydebian debian xenial
   lxw net mydebian
   lxw attach mydebian
 
@@ -70,8 +72,20 @@ setup() {
 
 new() {
 	local name="$1"
+        local distro="$2"
+        local release="$3"
+        local arch="$4"
 
-	lxc-create -t download $name
+        if [ -z "$distro" ]; then
+            lxc-create -t download $name
+        elif [ -z "$release" ]; then
+            lxc-create -t download $name -- -d "$distro" -a $(get_arch)
+        elif [ -z "$arch" ]; then
+            lxc-create -t download $name -- -d "$distro" -r "$release" -a $(get_arch)
+        else
+            lxc-create -t download $name -- -d "$distro" -r "$release" -a "$arch"
+        fi
+
 	start "$name"
 
 }
@@ -253,6 +267,16 @@ systemd_ctr() {
 	esac
 }
 
+# get_arch - returns current arch as expected by lxc
+get_arch() {
+    architecture=""
+    case $(uname -m) in
+        i386)   architecture="386" ;;
+        i686)   architecture="386" ;;
+        x86_64) architecture="amd64" ;;
+    esac
+    echo $architecture
+}
 
 # main
 # this sucks, busybox getopt is lacking -n param, so will not work there
@@ -268,7 +292,7 @@ case "$main_command" in
 	info) info "$2";;
 	kill) fkill "$2";;
 	ls) ls "$all_commands";;
-	new) new "$2";;
+	new) new "$2" "$3" "$4" "$5";;
 	net) net $all_commands;;
 	restart) restart "$2";;
 	setup) setup $all_commands;;
