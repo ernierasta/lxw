@@ -8,9 +8,20 @@
 # VARS
 
 # path where config and fs is located
-# TODO: looks like this standard, but maybe we should retrieve it dynamicaly
 # TODO: what about unprivileged?
+
+LXC_CONF=/etc/lxc/lxc.conf
 IMAGE_PATH=/var/lib/lxc
+
+# try to get containers path if defined
+if [ -e "$LXC_CONF" ]; then
+    param_name=$(cat $LXC_CONF | cut -d "=" -f 1 | xargs)
+    param_val=$(cat $LXC_CONF | cut -d "=" -f 2| xargs)
+
+    if [ "$param_name" = "lxc.lxcpath" ]; then
+        IMAGE_PATH="$param_val"
+    fi
+fi
 
 
 usage() {
