@@ -41,6 +41,7 @@ net <name> [bridge] [gateway]	        Define bridged network for container.
 restart <name>			Run or restart container.
 frestart <name> 		Fast restart, force kill container.
 attach <name>			Run if stopped and attach console to container.
+run <name> <command>    Run command in container.
 start <name>                    Start container.
 fstart <name>                   Foreground start container (DEBUG).
 stop <name> 			Stop container.
@@ -82,7 +83,7 @@ setup() {
 }
 
 new() {
-	local name="$1"
+        local name="$1"
         local distro="$2"
         local release="$3"
         local arch="$4"
@@ -100,6 +101,19 @@ new() {
 	start "$name"
 
 }
+
+run() {
+    local name="$1"
+    local command="$2"
+
+
+    if _is_running $name; then
+        lxc-attach -n "$name" -- $command 
+    else
+        lxc-execute -n "$name" -- $command
+    fi
+}
+ 
 
 start() {
         local name="$1"
@@ -310,6 +324,7 @@ case "$main_command" in
         start) start "$2";;
         fstart) fstart "$2";;
 	stop) stop "$2";;
+    run) run "$2" "$3";;
 
 	*) usage; exit 1;;
 esac

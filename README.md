@@ -50,6 +50,7 @@ $ lxw new mycontainer
 $ lxw net mycontainer # WARNING! This is experimental feature, will be improved or removed in future.
 $ lxw frestart mycontainer # or restart
 $ lxw attach mycontainer
+$ lxw run mycontainer "ls -al"
 $ lxw del mycontainer
 ```
 
